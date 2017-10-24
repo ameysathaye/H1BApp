@@ -1,0 +1,1 @@
+sqoop export --connect jdbc:mysql://localhost:3306/h1b --username root --password 'root123' --table question11 --update-mode allowinsert  --export-dir hdfs://localhost:54310/Project/question10/part-r-00000 --input-fields-terminated-by '\t' ;
