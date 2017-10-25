@@ -1,0 +1,144 @@
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.IOException;
+import java.net.URI;
+import java.util.HashMap;
+import java.util.Map;
+
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.io.LongWritable;
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
+import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
+import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
+import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
+import org.apache.hadoop.mapreduce.Job;
+import org.apache.hadoop.mapreduce.Mapper;
+import org.apache.hadoop.mapreduce.Partitioner;
+import org.apache.hadoop.mapreduce.Reducer;
+
+public class MapRedClass 
+{
+	public static class Mapper1 extends Mapper<LongWritable, Text, LongWritable, Text> 
+	{
+		private Map<String, String> abMap = new HashMap<String, String>();
+		private String myd = null;
+		
+       protected void setup(Context context) throws java.io.IOException, InterruptedException{
+			
+			super.setup(context);
+
+		    URI[] files = context.getCacheFiles(); // getCacheFiles returns null
+
+		    Path p = new Path(files[0]);
+		
+			if (p.getName().equals("store_master")) 
+			{
+				BufferedReader reader = new BufferedReader(new FileReader(p.toString()));
+					String line = reader.readLine();
+					while(line != null) {
+						String[] tokens = line.split(",");
+						String store_id = tokens[0];
+						String st = tokens[2];
+						abMap.put(store_id, st);
+						line = reader.readLine();
+					}
+					reader.close();
+			}
+			
+			if (abMap.isEmpty()) 
+			{
+				throw new IOException("MyError:Unable to load store data.");
+			}
+
+		}
+        public void map(LongWritable key, Text value, Context context)
+		throws IOException, InterruptedException 
+		{
+	        String record = value.toString();
+	        String[] parts = record.split(",");
+	        String store_id = parts[0];
+	        String state = abMap.get(store_id);
+	        myd = state + "," + parts[2];
+	        context.write(new LongWritable(Long.parseLong(parts[1])), new Text(myd));
+         }
+      }
+	   
+	public static class CaderPartitioner extends
+	   Partitioner < LongWritable, Text >
+	   {
+	      @Override
+	      public int getPartition(LongWritable key, Text value, int numReduceTasks)
+	      {
+	         String[] str = value.toString().split(",");
+	         String st = null;
+	         st = str[0];	         
+	         
+	         if(st.equals("MAH"))
+	         {
+	            return 0;
+	         }
+	         else
+	         {
+	            return 1;
+	         }
+	      }
+	   }
+	
+	public static class ReduceClass extends Reducer<LongWritable,Text,LongWritable,Text>
+	   {
+	      public long sum=0;
+	      private Text outputKey = new Text();
+
+	      public void reduce(LongWritable key, Iterable <Text> values, Context context) 
+	      throws IOException, InterruptedException, NullPointerException
+	      {
+	    	  
+		         for (Text val : values)
+		         {   
+		        	 String[] str = val.toString().split(","); 
+		        	 long qty_sold = Long.parseLong(str[1]);
+		        	 sum+=qty_sold; 
+		        	 String myKey=str[0]+","+Long.toString(sum);
+		        	 outputKey.set(myKey);
+		         }
+		         context.write(key, new Text(outputKey));
+		         sum=0;
+	      }
+	   }
+
+	public static void main(String ar[]) throws Exception
+	{
+		Configuration conf = new Configuration();
+		conf.set("mapreduce.output.textoutputformat.separator",",");
+		  Job job = Job.getInstance(conf);
+		  job.setJarByClass(MapRedClass.class);
+		  job.setJobName("Map side join");
+			
+	      job.setMapperClass(Mapper1.class);
+	      job.addCacheFile(new Path("store_master").toUri());
+			
+      
+	      //set partitioner statement
+			
+	      job.setPartitionerClass(CaderPartitioner.class);
+	      job.setReducerClass(ReduceClass.class);
+	      job.setNumReduceTasks(2);
+	      
+	      job.setMapOutputKeyClass(LongWritable.class);
+	      job.setMapOutputValueClass(Text.class);
+	      
+	      job.setInputFormatClass(TextInputFormat.class);
+			
+	      job.setOutputFormatClass(TextOutputFormat.class);
+	      job.setOutputKeyClass(LongWritable.class);
+	      job.setOutputValueClass(Text.class);
+	      
+	      FileInputFormat.setInputPaths(job, new Path(ar[0]));
+	      FileOutputFormat.setOutputPath(job,new Path(ar[1]));
+			
+	      System.exit(job.waitForCompletion(true)? 0 : 1);
+	}
+
+}
