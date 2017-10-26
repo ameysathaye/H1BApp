@@ -213,7 +213,7 @@ show_menu
                 sqoop export --connect jdbc:mysql://localhost:3306/h1b --username root --password 'root123' --table question11 --update-mode allowinsert  --export-dir hdfs://localhost:54310/Project/question10/part-r-00000 --input-fields-terminated-by '\t' ;
                 echo -e '\n\nDisplay contents from MySQL Database.\n\n'
                 echo -e '\n10) Which are the top 10 job positions that have  success rate more than 70% in petitions and total petitions filed more than 1000?\n\n'
-                mysql -u root -p'root123' -e 'select * from h1b.question11';
+                mysql -u root -p'root123' -e 'select * from h1b.question11 order by success_rate desc';
                 show_menu;
         ;;
 
