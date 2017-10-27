@@ -1,0 +1,25 @@
+import java.io.IOException;
+
+import org.apache.hadoop.io.LongWritable;
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapreduce.Mapper;
+
+
+public class DESOCMapper extends Mapper < LongWritable, Text, Text, LongWritable > 
+	{
+	    LongWritable one = new LongWritable(1);
+	    public void map(LongWritable key, Text values, Context context) throws IOException,InterruptedException 
+	    {
+	        if (key.get() > 0) 
+	        {
+	            //String[] token = values.toString().split("\t");
+	        	String[] token = values.toString().split(",(?=([^\"]*\"[^\"]*\")*[^\"]*$)");
+	            if (token[4].contains("DATA SCIENTIST")) 
+	            {
+	                //Text answer = new Text(token[3]);
+	            	Text answer = new Text(token[3].replaceAll("\"", ""));
+	                context.write(answer, one);
+	            }
+	        }
+	    }
+	}
